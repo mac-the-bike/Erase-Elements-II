@@ -93,8 +93,6 @@ private:
     QLineEdit* valueResult {nullptr};
     QComboBox* modeSwitch {nullptr};
     QComboBox* unitSwitch {nullptr};
-    QCheckBox* showDelta {nullptr};
-    QLabel* showDeltaLabel {nullptr};
     QAction* autoSaveAction {nullptr};
     QAction* newMeasurementBehaviourAction {nullptr};
     QToolButton* mSettings {nullptr};
@@ -106,17 +104,13 @@ private:
     void removeObject();
     void onModeChanged(int index);
     void onUnitChanged(int index);
-    void showDeltaChanged(int checkState);
     void autoSaveChanged(bool checked);
     void newMeasurementBehaviourChanged(bool checked);
     void updateSelectionType();
     void setModeSilent(App::MeasureType* mode);
-    App::MeasureType* getMeasureType();
     void enableAnnotateButton(bool state);
     void createObject(const App::MeasureType* measureType);
     void ensureGroup(Measure::MeasureBase* measurement);
-    void setDeltaPossible(bool possible);
-    void initViewObject(Measure::MeasureBase* measure);
     void syncDisplayUnit();
     void refreshResult();
     void createTypeInfo(const std::string& type);
@@ -125,7 +119,6 @@ private:
     bool explicitMode = false;
 
     // Stores if delta measures shall be shown
-    bool delta = true;
     bool mAutoSave = false;
     bool mGreedySelection = false;
     Gui::Document* mTargetDoc;
@@ -145,6 +138,27 @@ protected:
     QFormLayout& _parentFormLayout;
     // Every Qt object created by derived classes must have _container as a parent
     QWidget* _container {nullptr};
+};
+
+class TaskMeasureDistanceInfo: public TaskMeasureTypeInfo
+{
+public:
+    explicit TaskMeasureDistanceInfo(QFormLayout& formLayout);
+    void resetUIState() override;
+    void update(Measure::MeasureBase& measureObject) override;
+
+private:
+    void showDeltaChanged(int checkState);
+
+private:
+    QCheckBox* _showDelta {nullptr};
+    QLineEdit* _deltaXResult {nullptr};
+    QLineEdit* _deltaYResult {nullptr};
+    QLineEdit* _deltaZResult {nullptr};
+    QWidget* _deltaResult {nullptr};
+
+    Measure::MeasureBase* _measureObject {nullptr};
+    static inline bool _delta {true};
 };
 
 }  // namespace MeasureGui
