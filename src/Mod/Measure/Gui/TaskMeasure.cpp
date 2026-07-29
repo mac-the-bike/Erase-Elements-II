@@ -142,9 +142,9 @@ TaskMeasure::TaskMeasure()
     setupShortcuts(taskbox);
 
     QSettings settings;
-    settings.beginGroup(QLatin1String(taskMeasureSettingsGroup));
-    mAutoSave = settings.value(QLatin1String(taskMeasureAutoSaveSettingsName), mAutoSave).toBool();
-    mGreedySelection = settings.value(QLatin1String(taskMeasureGreedySelection), false).toBool();
+    settings.beginGroup(taskMeasureSettingsGroup);
+    mAutoSave = settings.value(taskMeasureAutoSaveSettingsName, mAutoSave).toBool();
+    mGreedySelection = settings.value(taskMeasureGreedySelection, false).toBool();
     settings.endGroup();
 
     autoSaveAction = new QAction(tr("Auto Save"));
@@ -190,7 +190,10 @@ TaskMeasure::TaskMeasure()
     modeSwitch->addItem(tr("Auto"));
 
     for (App::MeasureType* mType : App::MeasureManager::getMeasureTypes()) {
-        modeSwitch->addItem(tr(mType->label.c_str()), QString::fromStdString(mType->identifier));
+        modeSwitch->addItem(
+            qApp->translate("TaskMeasure", mType->label.c_str()),
+            QString::fromStdString(mType->identifier)
+        );
     }
 
     // Connect dropdown's change signal to our onModeChange slot
@@ -213,7 +216,7 @@ TaskMeasure::TaskMeasure()
     formLayout->setVerticalSpacing(6);
     // Note: How can the split between columns be kept in the middle?
     // formLayout->setFieldGrowthPolicy(QFormLayout::FieldGrowthPolicy::ExpandingFieldsGrow);
-    formLayout->setFormAlignment(Qt::AlignCenter);
+    formLayout->setFormAlignment(Qt::AlignTop);
 
     auto* settingsLayout = new QHBoxLayout();
     settingsLayout->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding));
@@ -352,7 +355,7 @@ void TaskMeasure::tryUpdate()
         }
     }
 
-    valueResult->setText(QLatin1String("-"));
+    valueResult->setText("-");
     if (typeInfo) {
         typeInfo->resetUIState();
     }
@@ -412,6 +415,7 @@ void TaskMeasure::tryUpdate()
 
         syncDisplayUnit();
         refreshResult();
+        updateAnnotation();
     }
     _mMeasureObject->purgeTouched();
 }
@@ -468,6 +472,21 @@ void TaskMeasure::refreshResult()
     if (typeInfo) {
         typeInfo->update(*_mMeasureObject);
     }
+}
+
+void MeasureGui::TaskMeasure::updateAnnotation()
+{
+    Gui::Document* guiDoc = Gui::Application::Instance->activeDocument();
+    if (!guiDoc) {
+        return;
+    }
+
+    Gui::ViewProvider* viewObject = guiDoc->getViewProvider(_mMeasureObject);
+    if (!viewObject) {
+        return;
+    }
+
+    dynamic_cast<MeasureGui::ViewProviderMeasureBase*>(viewObject)->positionAnno(_mMeasureObject);
 }
 
 void TaskMeasure::closeDialog()
@@ -817,9 +836,9 @@ TaskMeasureDistanceInfo::TaskMeasureDistanceInfo(QFormLayout& formLayout)
 
 void TaskMeasureDistanceInfo::resetUIState()
 {
-    _deltaXResult->setText(QLatin1String("-"));
-    _deltaYResult->setText(QLatin1String("-"));
-    _deltaZResult->setText(QLatin1String("-"));
+    _deltaXResult->setText("-");
+    _deltaYResult->setText("-");
+    _deltaZResult->setText("-");
 }
 
 void TaskMeasureDistanceInfo::update(Measure::MeasureBase& measureObject)
@@ -835,15 +854,11 @@ void TaskMeasureDistanceInfo::update(Measure::MeasureBase& measureObject)
         return;
     }
 
-    // Init the position of the annotation
-    dynamic_cast<ViewProviderMeasureBase*>(viewObject)->positionAnno(&measureObject);
-
-    auto* prop = viewObject->getPropertyByName<App::PropertyBool>("ShowDelta");
-    assert(
-        prop && "A measure view provider that uses the TaskMeasureDistanceInfo must define ShowDelta"
-    );
-    prop->setValue(_delta);
-    viewObject->update(prop);
+    auto* showDeltaProp = viewObject->getPropertyByName<App::PropertyBool>("ShowDelta");
+    if (showDeltaProp) {
+        showDeltaProp->setValue(_delta);
+        viewObject->update(showDeltaProp);
+    }
 
     if (!_delta) {
         return;
@@ -874,8 +889,8 @@ void TaskMeasureDistanceInfo::showDeltaChanged(int checkState)
     _delta = checkState == Qt::CheckState::Checked;
 
     QSettings settings;
-    settings.beginGroup(QLatin1String(taskMeasureSettingsGroup));
-    settings.setValue(QLatin1String(taskMeasureShowDeltaSettingsName), _delta);
+    settings.beginGroup(taskMeasureSettingsGroup);
+    settings.setValue(taskMeasureShowDeltaSettingsName, _delta);
     settings.endGroup();
     settings.sync();  // immediate write to the settings file
 

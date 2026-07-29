@@ -113,6 +113,7 @@ private:
     void ensureGroup(Measure::MeasureBase* measurement);
     void syncDisplayUnit();
     void refreshResult();
+    void updateAnnotation();
     void createTypeInfo(const std::string& type);
 
     // Stores if the mode is explicitly set by the user or implicitly through the selection
@@ -130,7 +131,7 @@ class TaskMeasureTypeInfo: public QObject
     Q_OBJECT
 public:
     explicit TaskMeasureTypeInfo(QFormLayout& parentFormLayout);
-    virtual ~TaskMeasureTypeInfo();
+    ~TaskMeasureTypeInfo() override;
     virtual void resetUIState() = 0;
     virtual void update(Measure::MeasureBase& measureObject) = 0;
 
@@ -142,6 +143,7 @@ protected:
 
 class TaskMeasureDistanceInfo: public TaskMeasureTypeInfo
 {
+    Q_OBJECT
 public:
     explicit TaskMeasureDistanceInfo(QFormLayout& formLayout);
     void resetUIState() override;
