@@ -83,17 +83,17 @@ def createResourceClone(obj, orig, name, icon):
     clone.Label = "%s-%s" % (name, orig.Label)
     clone.addProperty("App::PropertyString", "PathResource")
     clone.PathResource = name
-    print('')
+    print("")
     if clone.ViewObject:
         import Path.Base.Gui.IconViewProvider
 
         Path.Base.Gui.IconViewProvider.Attach(clone.ViewObject, icon)
         clone.ViewObject.Visibility = False
         clone.ViewObject.DisplayMode = "Flat Lines"
-        #clone.ViewObject.ShapeColor = (0.447, 0.475, 0.502)
+        # clone.ViewObject.ShapeColor = (0.447, 0.475, 0.502)
         clone.ViewObject.Transparency = 0
-        #clone.ViewObject.LineColor = (0.310, 0.333, 0.357)
-        #clone.ViewObject.ShapeMaterial.Shininess = 0.85
+        # clone.ViewObject.LineColor = (0.310, 0.333, 0.357)
+        # clone.ViewObject.ShapeMaterial.Shininess = 0.85
     obj.Document.recompute()  # necessary to create the clone shape
     return clone
 
@@ -617,10 +617,10 @@ class ObjectJob:
                     if isResourceClone(obj, base, "Model") and base.ViewObject:
                         # base.ViewObject.Visibility = False
                         base.ViewObject.DisplayMode = "Flat Lines"
-                        #base.ViewObject.ShapeColor = (0.447, 0.475, 0.502)
+                        # base.ViewObject.ShapeColor = (0.447, 0.475, 0.502)
                         base.ViewObject.Transparency = 0
-                        #base.ViewObject.LineColor = (0.310, 0.333, 0.357)
-                        #base.ViewObject.ShapeMaterial.Shininess = 0.85
+                        # base.ViewObject.LineColor = (0.310, 0.333, 0.357)
+                        # base.ViewObject.ShapeMaterial.Shininess = 0.85
 
     def onChanged(self, obj, prop):
         if prop == "PostProcessor" and obj.PostProcessor:
