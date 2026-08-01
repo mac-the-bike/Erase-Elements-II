@@ -53,6 +53,7 @@ class ToolControllerTemplate:
     LeadOutFeed = "leadoutfeed"
     Name = "name"
     RampFeed = "rampfeed"
+    TransitionFeed = "transitionfeed"
     SpindleDir = "dir"
     SpindleSpeed = "speed"
     ToolNumber = "nr"
@@ -191,6 +192,13 @@ class ToolController:
 
         obj.addProperty(
             "App::PropertySpeed",
+            "TransitionFeed",
+            "Feed",
+            QT_TRANSLATE_NOOP("App::Property", "Feed rate for transitions at working depth"),
+        )
+
+        obj.addProperty(
+            "App::PropertySpeed",
             "LeadInFeed",
             "Feed",
             QT_TRANSLATE_NOOP("App::Property", "Feed rate for lead-in moves"),
@@ -297,6 +305,13 @@ class ToolController:
             obj.setExpression("LeadOutFeed", "HorizFeed")
             needsRecompute = True
 
+        if not hasattr(obj, "TransitionFeed"):
+            obj.addProperty(
+                "App::PropertySpeed",
+                "TransitionFeed",
+                "Feed",
+                QT_TRANSLATE_NOOP("App::Property", "Feed rate for transitions at working depth"),
+            )
         if needsRecompute:
             obj.recompute()
 
@@ -331,6 +346,10 @@ class ToolController:
                     )
                 if template.get(ToolControllerTemplate.RampFeed):
                     obj.RampFeed = template.get(ToolControllerTemplate.RampFeed, obj.RampFeed)
+                if template.get(ToolControllerTemplate.TransitionFeed):
+                    obj.TransitionFeed = template.get(
+                        ToolControllerTemplate.TransitionFeed, obj.TransitionFeed
+                    )
                 if template.get(ToolControllerTemplate.VertRapid):
                     obj.VertRapid = template.get(ToolControllerTemplate.VertRapid)
                 if template.get(ToolControllerTemplate.HorizRapid):
@@ -388,6 +407,7 @@ class ToolController:
         attrs[ToolControllerTemplate.LeadInFeed] = "%s" % (obj.LeadInFeed)
         attrs[ToolControllerTemplate.LeadOutFeed] = "%s" % (obj.LeadOutFeed)
         attrs[ToolControllerTemplate.RampFeed] = "%s" % (obj.RampFeed)
+        attrs[ToolControllerTemplate.TransitionFeed] = "%s" % (obj.TransitionFeed)
         attrs[ToolControllerTemplate.VertRapid] = "%s" % (obj.VertRapid)
         attrs[ToolControllerTemplate.HorizRapid] = "%s" % (obj.HorizRapid)
         attrs[ToolControllerTemplate.SpindleSpeed] = obj.SpindleSpeed
