@@ -744,6 +744,7 @@ SET(Dock_Windows_CPP_SRCS
     Selection/SelectionView.cpp
     ToolBox.cpp
     Tree.cpp
+    TreeSearchUtil.cpp
     TreeView.cpp
     DAGView/DAGView.cpp
     DAGView/DAGModel.cpp
@@ -758,6 +759,7 @@ SET(Dock_Windows_HPP_SRCS
     Selection/SelectionView.h
     ToolBox.h
     Tree.h
+    TreeSearchUtil.h
     TreeView.h
     DAGView/DAGView.h
     DAGView/DAGModel.h
