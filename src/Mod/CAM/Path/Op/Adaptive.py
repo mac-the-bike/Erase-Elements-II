@@ -308,7 +308,11 @@ def GenerateGCode(op, obj, adaptiveResults):
                         if z != lz:
                             op.commandlist.append(Path.Command("G0", {"Z": z}))
 
-                        op.commandlist.append(Path.Command("G0", {"X": x, "Y": y}))
+                        if getattr(obj.ToolController, "TransitionFeed", 0):
+                            feed = obj.ToolController.TransitionFeed.Value
+                            op.commandlist.append(Path.Command("G1", {"X": x, "Y": y, "F": feed}))
+                        else:
+                            op.commandlist.append(Path.Command("G0", {"X": x, "Y": y}))
 
                     elif motionType == area.AdaptiveMotionType.LinkNotClear:
                         z = obj.ClearanceHeight.Value
