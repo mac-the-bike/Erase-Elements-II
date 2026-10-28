@@ -47,6 +47,7 @@
 #include <GeomLib_IsPlanarSurface.hxx>
 
 #include <DatumFeature.h>
+#include <App/Datums.h>
 #include <App/Application.h>
 #include <App/Document.h>
 #include <App/DocumentObject.h>
@@ -71,20 +72,42 @@ using Attacher::AttachEnginePlane;
 // From:
 // https://github.com/Celemation/FreeCAD/blob/joel_selection_summary_demo/src/Gui/Selection/SelectionSummary.cpp
 
+namespace
+{
 // Should work with edges and wires
-static double getLength(TopoDS_Shape& wire)
+double getLength(TopoDS_Shape& wire)
 {
     GProp_GProps gprops;
     BRepGProp::LinearProperties(wire, gprops);
     return gprops.Mass();
 }
 
-static double getFaceArea(TopoDS_Shape& face)
+double getFaceArea(TopoDS_Shape& face)
 {
     GProp_GProps gprops;
     BRepGProp::SurfaceProperties(face, gprops);
     return gprops.Mass();
 }
+
+bool isDatum(const App::SubObjectT& subject)
+{
+    App::DocumentObject* obj = subject.getSubObjectList().back();
+    if (!obj || !obj->isValid()) {
+        return false;
+    }
+    return obj->isDerivedFrom<App::DatumElement>() || obj->isDerivedFrom<Part::Datum>();
+}
+
+Base::Placement getPlacement(const App::SubObjectT& subject)
+{
+    App::DocumentObject* obj = subject.getSubObjectList().back();
+    if (obj && obj->isValid()) {
+        return App::GeoFeature::getGlobalPlacement(obj, subject.getObject(), subject.getSubName());
+    }
+    return Base::Placement();
+}
+
+}  // namespace
 
 TopoDS_Shape getLocatedShape(const App::SubObjectT& subject)
 {
@@ -103,23 +126,22 @@ TopoDS_Shape getLocatedShape(const App::SubObjectT& subject)
         }
     }
 
+    // Resolve from the root with the accumulated transform: replacing the placement
+    // on an extracted sub-shape would drop its internal location.
     TopoShape ts = Part::Feature::getTopoShape(
-        obj,
+        subject.getObject(),
         Part::ShapeOption::NeedSubElement | Part::ShapeOption::ResolveLink
             | Part::ShapeOption::Transform,
-        subject.getElementName()
+        subject.getSubName().c_str()
     );
     if (ts.isNull()) {
         Base::Console().log(
-            "Part::MeasureClient::getLocatedShape: Did not retrieve shape for %s, %s\n",
+            "Part::MeasureClient::getLocatedShape: Did not retrieve shape for {}, {}\n",
             obj->getNameInDocument(),
             subject.getElementName()
         );
         return {};
     }
-    ts.setPlacement(
-        App::GeoFeature::getGlobalPlacement(obj, subject.getObject(), subject.getSubName())
-    );
     return ts.getShape();
 }
 
@@ -143,13 +165,15 @@ App::MeasureElementType PartMeasureTypeCb(App::DocumentObject* ob, const char* s
     if (shape.IsNull()) {
         // failure here on loading document with existing measurement.
         Base::Console().message(
-            "Part::PartMeasureTypeCb did not retrieve shape for %s, %s\n",
+            "Part::PartMeasureTypeCb did not retrieve shape for {}, {}\n",
             ob->getNameInDocument(),
             subName
         );
         return App::MeasureElementType();
     }
     TopAbs_ShapeEnum shapeType = shape.ShapeType();
+
+    App::SubObjectT subject {ob, subName};
 
     switch (shapeType) {
         case TopAbs_VERTEX: {
@@ -161,8 +185,8 @@ App::MeasureElementType PartMeasureTypeCb(App::DocumentObject* ob, const char* s
 
             switch (curve.GetType()) {
                 case GeomAbs_Line: {
-                    return ob->isDerivedFrom<Part::Datum>() ? App::MeasureElementType::LINE
-                                                            : App::MeasureElementType::LINESEGMENT;
+                    return isDatum(subject) ? App::MeasureElementType::LINE
+                                            : App::MeasureElementType::LINESEGMENT;
                 }
                 case GeomAbs_Circle: {
                     return App::MeasureElementType::CIRCLE;
@@ -194,6 +218,9 @@ App::MeasureElementType PartMeasureTypeCb(App::DocumentObject* ob, const char* s
             switch (surface.GetType()) {
                 case GeomAbs_Cylinder: {
                     return App::MeasureElementType::CYLINDER;
+                }
+                case GeomAbs_Cone: {
+                    return App::MeasureElementType::CONE;
                 }
                 case GeomAbs_Torus: {
                     return App::MeasureElementType::TORUS;
@@ -240,23 +267,6 @@ App::MeasureElementType PartMeasureTypeCb(App::DocumentObject* ob, const char* s
     }
 }
 
-
-bool getShapeFromStrings(TopoDS_Shape& shapeOut, const App::SubObjectT& subject, Base::Matrix4D* mat)
-{
-    App::DocumentObject* obj = subject.getObject();
-    if (!obj) {
-        return {};
-    }
-    shapeOut = Part::Feature::getShape(
-        obj,
-        Part::ShapeOption::NeedSubElement | Part::ShapeOption::ResolveLink
-            | Part::ShapeOption::Transform,
-        subject.getElementName(),
-        mat
-    );
-    return !shapeOut.IsNull();
-}
-
 MeasureLengthInfoPtr MeasureLengthHandler(const App::SubObjectT& subject)
 {
     TopoDS_Shape shape = getLocatedShape(subject);
@@ -264,7 +274,7 @@ MeasureLengthInfoPtr MeasureLengthHandler(const App::SubObjectT& subject)
     if (shape.IsNull()) {
         // failure here on loading document with existing measurement.
         Base::Console().message(
-            "MeasureLengthHandler did not retrieve shape for %s, %s\n",
+            "MeasureLengthHandler did not retrieve shape for {}, {}\n",
             subject.getObjectName(),
             subject.getElementName()
         );
@@ -389,7 +399,6 @@ MeasureRadiusInfoPtr MeasureRadiusHandler(const App::SubObjectT& subject)
     );
 }
 
-
 MeasureAreaInfoPtr MeasureAreaHandler(const App::SubObjectT& subject)
 {
     TopoDS_Shape shape = getLocatedShape(subject);
@@ -397,12 +406,25 @@ MeasureAreaInfoPtr MeasureAreaHandler(const App::SubObjectT& subject)
     if (shape.IsNull()) {
         // failure here on loading document with existing measurement.
         Base::Console().message(
-            "MeasureAreaHandler did not retrieve shape for %s, %s\n",
+            "MeasureAreaHandler did not retrieve shape for {}, {}\n",
             subject.getObjectName(),
             subject.getElementName()
         );
         return std::make_shared<MeasureAreaInfo>(false, 0.0, Base::Matrix4D());
     }
+
+    if (isDatum(subject)) {
+        return std::make_shared<MeasureAreaInfo>(
+            true,
+            0.0,
+            App::GeoFeature::getGlobalPlacement(
+                subject.getSubObjectList().back(),
+                subject.getObject(),
+                subject.getSubName()
+            )
+        );
+    }
+
     TopAbs_ShapeEnum sType = shape.ShapeType();
 
     if (sType != TopAbs_FACE && sType != TopAbs_SHELL && sType != TopAbs_SOLID) {
@@ -421,14 +443,13 @@ MeasureAreaInfoPtr MeasureAreaHandler(const App::SubObjectT& subject)
     return std::make_shared<MeasureAreaInfo>(true, getFaceArea(shape), placement);
 }
 
-
 MeasurePositionInfoPtr MeasurePositionHandler(const App::SubObjectT& subject)
 {
     TopoDS_Shape shape = getLocatedShape(subject);
 
     if (shape.IsNull()) {
         Base::Console().message(
-            "MeasurePositionHandler did not retrieve shape for %s, %s\n",
+            "MeasurePositionHandler did not retrieve shape for {}, {}\n",
             subject.getObjectName(),
             subject.getElementName()
         );
@@ -445,7 +466,6 @@ MeasurePositionInfoPtr MeasurePositionHandler(const App::SubObjectT& subject)
     return std::make_shared<MeasurePositionInfo>(true, Base::Vector3d(point.X(), point.Y(), point.Z()));
 }
 
-
 MeasureAngleInfoPtr MeasureAngleHandler(const App::SubObjectT& subject)
 {
     TopoDS_Shape shape = getLocatedShape(subject);
@@ -453,7 +473,7 @@ MeasureAngleInfoPtr MeasureAngleHandler(const App::SubObjectT& subject)
     if (shape.IsNull()) {
         // failure here on loading document with existing measurement.
         Base::Console().message(
-            "MeasureAngleHandler did not retrieve shape for %s, %s\n",
+            "MeasureAngleHandler did not retrieve shape for {}, {}\n",
             subject.getObjectName(),
             subject.getElementName()
         );
@@ -461,6 +481,11 @@ MeasureAngleInfoPtr MeasureAngleHandler(const App::SubObjectT& subject)
     }
 
     TopAbs_ShapeEnum sType = shape.ShapeType();
+    if (isDatum(subject) && sType != TopAbs_VERTEX) {
+        Base::Placement placement = getPlacement(subject);
+        Base::Vector3d orientation = placement.getRotation().multVec(Base::Vector3d(0, 0, -1));
+        return std::make_shared<MeasureAngleInfo>(true, orientation, placement.getPosition());
+    }
 
     gp_Pnt position;
     Base::Vector3d orientation;
@@ -496,7 +521,6 @@ MeasureAngleInfoPtr MeasureAngleHandler(const App::SubObjectT& subject)
     );
 }
 
-
 MeasureDistanceInfoPtr MeasureDistanceHandler(const App::SubObjectT& subject)
 {
     TopoDS_Shape shape = getLocatedShape(subject);
@@ -504,7 +528,7 @@ MeasureDistanceInfoPtr MeasureDistanceHandler(const App::SubObjectT& subject)
     if (shape.IsNull()) {
         // failure here on loading document with existing measurement.
         Base::Console().message(
-            "MeasureDistanceHandler did not retrieve shape for %s, %s\n",
+            "MeasureDistanceHandler did not retrieve shape for {}, {}\n",
             subject.getObjectName(),
             subject.getElementName()
         );
