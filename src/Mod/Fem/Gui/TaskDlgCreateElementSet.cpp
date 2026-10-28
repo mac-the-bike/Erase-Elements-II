@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LGPL-2.1-or-later
 
 /***************************************************************************
+ *   Copyright (c) 2026 Peter McB                                          *
  *   Copyright (c) 2023 Peter McB                                          *
  *                                                                         *
  *   Copyright (c) 2013 Jürgen Riegel (FreeCAD@juergen-riegel.net)         *
@@ -49,7 +50,8 @@ TaskDlgCreateElementSet::TaskDlgCreateElementSet(Fem::FemSetElementNodesObject* 
     name = new TaskObjectName(obj);
     param = new TaskCreateElementSet(obj);
 
-    Content.push_back(name);
+
+//     Content.push_back(name); // this is from createnodesset and is not required
     Content.push_back(param);
 }
 
@@ -74,14 +76,10 @@ bool TaskDlgCreateElementSet::accept()
         param->MeshViewProvider->resetHighlightNodes();
         FemSetElementNodesObject->Label.setValue(name->name);
         Gui::Command::doCommand(Gui::Command::Gui, "Gui.activeDocument().resetEdit()");
-        FemSetElementNodesObject->getDocument()
-            ->commitTransaction();  // Opened in ViewProviderDocumentObject::startDefaultEditMode()
 
         return true;
     }
     catch (const Base::Exception& e) {
-        FemSetElementNodesObject->getDocument()
-            ->abortTransaction();  // Opened in ViewProviderDocumentObject::startDefaultEditMode()
         Base::Console().warning("TaskDlgCreateElementSet::accept(): {}\n", e.what());
     }
 
@@ -92,10 +90,11 @@ bool TaskDlgCreateElementSet::reject()
 {
     FemSetElementNodesObject->execute();
     param->MeshViewProvider->resetHighlightNodes();
+
+    //Gui::Command::abortCommand();
     FemSetElementNodesObject->getDocument()
         ->abortTransaction();  // Opened in ViewProviderDocumentObject::startDefaultEditMode()
     Gui::Command::doCommand(Gui::Command::Gui, "Gui.activeDocument().resetEdit()");
-
     return true;
 }
 
@@ -110,5 +109,4 @@ void TaskDlgCreateElementSet::deactivate()
 {
     param->detachSelection();
 }
-
 #include "moc_TaskDlgCreateElementSet.cpp"

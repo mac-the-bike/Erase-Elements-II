@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LGPL-2.1-or-later
 
 /***************************************************************************
+ *   Copyright (c) 2026 Peter McB                                          *
  *   Copyright (c) 2022 Peter McB                                          *
  *   Copyright (c) 2008 Jürgen Riegel <juergen.riegel@web.de>              *
  *                                                                         *
@@ -1443,7 +1444,8 @@ CmdFemCreateElementsSet::CmdFemCreateElementsSet()
 void CmdFemCreateElementsSet::activated(int)
 {
     Gui::SelectionFilter ObjectFilter("SELECT Fem::FemSetElementNodesObject COUNT 1");
-    Gui::SelectionFilter FemMeshFilter("SELECT Fem::FemMeshObject COUNT 1");
+    Gui::SelectionFilter FemMeshFilter("SELECT Fem::FemMeshObject COUNT 1..2");
+//    Gui::SelectionFilter FemMeshFilter("SELECT Fem::FemMeshObject COUNT 1");
 
     if (ObjectFilter.match()) {
         Fem::FemSetElementNodesObject* NodesObj = static_cast<Fem::FemSetElementNodesObject*>(
@@ -1479,8 +1481,8 @@ void CmdFemCreateElementsSet::activated(int)
         QMessageBox::warning(
             Gui::getMainWindow(),
             qApp->translate("CmdFemCreateElementsSet", "Wrong selection"),
-            qApp->translate("CmdFemCreateNodesSet", "Select a single FEM Mesh.")
-        );
+            qApp->translate("CmdFemCreateNodesSet", "Select 1 or 2 Meshes.")
+            );
     }
 }
 

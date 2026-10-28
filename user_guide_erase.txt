@@ -1,0 +1,104 @@
+THIS IS THE USER'S GUIDE
+
+I have written some code, for the FEM Work Bench, that enables the user to erase elements from the display. It is based on "Node Set".
+
+This replaces the previous version.
+user's guide starts here:
+--------------------------------------------------------------------------------------------
+
+This function can be used to, amongst other things:
+look at the internal mesh to check on the mesh density
+look at parts of the model that are obscured by other parts
+look at the variation of results through the depth
+
+None of the original data is deleted. The "Restore" option will restore all modified data and delete the added data.
+
+It is under the FEM workbench, under "Mesh"->"Erase Elements"
+
+This new code deals with the following types of mesh:
+1 - Result Mesh - the non-pipeline type, names like: "CCX_EigenMode_4_Results"
+2 - Other Mesh - an analysis FE mesh that is not a result mesh, names like: FEMMeshGmsh
+
+A "result mesh", lower case, is the result of erasing elements of a "Result Mesh".
+
+RUNNING OF PROGRAM
+
+There are three options:
+Erase - Erase Elements defined by a Polygon and create a new mesh
+Restore - Delete New Meshes and restore originals
+Copy - Copy a result mesh
+
+When a result mesh is modified, it can be used as a Pipeline object by highlighting the result object, e.g. "CCX_EigenMode_4_Results", and going to Result->"Post pipeline from result".
+
+QUICK USER'S GUIDE:
+There is more information in the Long Winded Version.
+OPTION 1 - "Erase":
+A polygon is swept out over the selected mesh. Those elements whose centres of gravity are inside, "inner", or outside, "outer", the polygon are chosen and erased. A new "Result Mesh", "Other Mesh" or result mesh is created.
+OPTION 2 - "Restore"
+Any result meshes that have been modified are restored to their original state.
+All generated mesh data is deleted.
+OPTION 3 - "Copy"
+Only applicable to result meshes. Highlight two result meshes, the first is copied to the second. There are some exclusions.
+
+LONG WINDED VERSION:
+OPTION 1 - "Erase":
+A polygon is swept out over the selected mesh. Those elements whose centres of gravity are inside, "inner", or outside, "outer", the polygon are chosen and erased. For a result mesh, all the nodes are retained and for any other mesh only the nodes in the elements are retained. An "ElementsSet" object is created which contains the element numbers not erased and the negative of the type of the element, -4 is 3D and -3 is 2D.
+The contents can listed with, in the python console:
+    Gui.ActiveDocument.getObject("ElementsSet").Object.Elements
+The new set of elements are written to a text file which is then read using python. The file is "FreeCADOutputFileEraseElements.inp" which is deleted when the Erase Elements UI is closed.
+
+Highlight a mesh using a left mouse click.
+Different procedures are followed depending on the type of mesh.
+
+1 - RESULTS MESH
+        highlight a result mesh, e.g. "CCX_Results_Mesh", and using the polygon, select the elements to be erased. Call this the "Highlighted Mesh".
+Pass 1:
+        this creates: 
+        "NewResultMesh": which is the modified "Highlighted Mesh", with the unerased elements, see Note 1
+        a new "Highlighted Mesh" which is a copy of the "NewResultMesh"
+        "StartResultMesh": this is a copy of the first original result mesh to be modified. This is done once because all all the result meshes have the same topology.
+        "StartResultName": this contains the names of the referenced meshes, see Note 2
+
+Pass 2 and subsequent:
+        this creates: 
+        "NewResultMesh": which is the modified "Highlighted Mesh", with the unerased elements, see Note 1
+        a new "Highlighted Mesh" which is a copy of the "NewResultMesh"
+        "StartResultName" is modified
+
+2 - OTHER MESH
+Pass 1:
+        this creates: 
+        "NewFemMesh", see Note 1.
+        "StartResultName": this contains the names of the referenced meshes, see Note 2
+Pass 2 and subsequent:
+        this creates: 
+        "NewFemMesh", see Note 1.
+
+OPTION 2 - "Restore"
+A pass is made through all the entries in "StartResultName" and those objects are deleted.
+If the "StartResultMesh", if present, it is copied back to the result meshes that are referenced in "StartResultName" and then deleted.
+
+OPTION 3 - "Copy"
+Only applicable to result meshes. Highlight 2 result meshes, the first is the source and the second is the destination.
+This option copies the source to the destination result mesh. 
+The source must be one of "StartResultMesh", "NewResultMesh" or a "Result Mesh" and the destination a result mesh, e.g. "CCX_Results_Mesh".
+The source is not modified.
+
+--------------------------------------------------------------------------------------------
+Note 1: mesh names of the form of "NewFemMesh001" or "NewResultMesh001", etc., will be generated as required.
+
+Note 2: this contains the name of the first mesh to be modified and the result mesh names in the following format:
+
+FIRSTMESH&&CCX_Results_Mesh&&LASTRES&&CCX_Results_Mesh&&OTHER2&&CCX_Results_Mesh&&OTHERNUM&&2&&
+
+It is created when the first set of elements are deleted.
+FIRSTMESH - the name of the first mesh that was modified, this will be Highlighted when the data is restored
+The following are used if result meshes are modified:
+LASTRES - the name of the last result file modified
+OTHER1 - the first result file modified
+OTHER2 - the second result file modified
+OTHERNUM - the last N in OTHERN that has been used, in this case 2
+
+The contents can be listed using, in the python console:
+    FreeCAD.ActiveDocument.StartResultName.Label2
+
